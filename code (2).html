@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dark Mode Notepad with Read Aloud</title>
+
+    <style>
+        /* --- Base Layout --- */
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: sans-serif;
+            background-color: #2b2b2b;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* --- Top Ribbon for Controls --- */
+        #ribbon {
+            flex-shrink: 0;
+            background-color: #2b2b2b;
+            padding: 8px 20px;
+            border-bottom: 1px solid #4a4a4a;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            justify-content: flex-end;
+        }
+        
+        /* Shared button styles */
+        #read-aloud-btn, #clear-btn {
+            background-color: #4f4f4f;
+            color: #e0e0e0;
+            border: 1px solid #666;
+            border-radius: 4px;
+            padding: 6px 53px; /* MODIFIED: Further increased horizontal padding */
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.2s;
+        }
+
+        #read-aloud-btn:hover {
+            background-color: #5a5a5a;
+        }
+
+        #clear-btn:hover {
+            background-color: #7d3a3a;
+        }
+        
+        /* Shared icon styles */
+        #read-aloud-btn svg, #clear-btn svg {
+            width: 16px;
+            height: 16px;
+            fill: #e0e0e0;
+        }
+
+        /* Logic to toggle play/pause icons */
+        .icon-pause { display: none; }
+        #read-aloud-btn.is-playing .icon-play { display: none; }
+        #read-aloud-btn.is-playing .icon-pause { display: block; }
+
+        /* --- Notepad Area --- */
+        #notepad {
+            flex-grow: 1;
+            box-sizing: border-box;
+            outline: none;
+            overflow-y: auto; 
+            padding: 25px;
+            background-color: #3a3a3a;
+            color: #e0e0e0;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 16px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        #notepad:empty::before {
+            content: "Start writing your notes here... Your text is saved automatically.";
+            color: #757575;
+            pointer-events: none;
+        }
+
+        /* Style for the word being read aloud (on spacebar press) */
+        .highlight-word {
+            background-color: rgba(59, 130, 246, 0.5);
+            border-radius: 3px;
+            transition: background-color 0.1s ease-in-out;
+        }
+        
+        /* Style for the sentence being read aloud from the ribbon button */
+        .highlight-sentence {
+            background-color: rgba(253, 224, 71, 0.4);
+            border-radius: 3px;
+            transition: background-color 0.2s ease-in-out;
+            box-shadow: 0 0 5px rgba(253, 224, 71, 0.3);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Ribbon for controls -->
+    <div id="ribbon">
+        <button id="read-aloud-btn" title="Read text aloud">
+            <svg class="icon-play" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M8 5v14l11-7z"/></svg>
+            <svg class="icon-pause" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+        </button>
+        <button id="clear-btn" title="Clear all text">
+             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+        </button>
+    </div>
+
+    <div id="notepad" contenteditable="true" spellcheck="false"></div>
+
+    <script>
+        // The JavaScript remains exactly the same.
+        window.addEventListener('DOMContentLoaded', (event) => {
+            const notepad = document.getElementById('notepad');
+            const readAloudBtn = document.getElementById('read-aloud-btn');
+            const clearBtn = document.getElementById('clear-btn');
+            
+            let currentUtterance = null;
+            let currentHighlightSpan = null;
+            let lastHighlightedSentenceStartIndex = -1;
+            let currentSpokenWord = '';
+
+            // --- 1. Load saved notes ---
+            const savedNote = localStorage.getItem('savedNote');
+            if (savedNote) {
+                notepad.innerText = savedNote;
+            }
+
+            // --- 2. Save notes on input & handle speech interruption ---
+            notepad.addEventListener('input', () => {
+                localStorage.setItem('savedNote', notepad.innerText);
+
+                if (speechSynthesis.speaking && currentUtterance) {
+                    const wordToFinish = currentSpokenWord;
+                    speechSynthesis.cancel();
+                    removeHighlight();
+                    readAloudBtn.classList.remove('is-playing');
+                    currentUtterance = null;
+                    lastHighlightedSentenceStartIndex = -1;
+                    if (wordToFinish && wordToFinish.trim()) {
+                        const finishWordUtterance = new SpeechSynthesisUtterance(wordToFinish);
+                        speechSynthesis.speak(finishWordUtterance);
+                    }
+                }
+            });
+            
+            // --- 3. Highlight last word on spacebar press (Unchanged) ---
+            notepad.addEventListener('keyup', (e) => {
+                if (speechSynthesis.speaking && currentUtterance) return;
+                if (e.key === ' ' || e.key === 'Enter') {
+                    const selection = window.getSelection();
+                    if (!selection.rangeCount) return;
+                    const range = selection.getRangeAt(0);
+                    const textNode = range.startContainer;
+                    if (textNode.nodeType !== Node.TEXT_NODE || !notepad.contains(textNode)) return;
+                    const textBeforeCursor = textNode.textContent.substring(0, range.startOffset).trim();
+                    const lastSpaceIndex = textBeforeCursor.lastIndexOf(' ');
+                    const lastWord = textBeforeCursor.substring(lastSpaceIndex + 1);
+                    if (lastWord) {
+                        const wordRange = document.createRange();
+                        wordRange.setStart(textNode, lastSpaceIndex + 1);
+                        wordRange.setEnd(textNode, textBeforeCursor.length);
+                        const highlightSpan = document.createElement('span');
+                        highlightSpan.className = 'highlight-word';
+                        try { wordRange.surroundContents(highlightSpan); } catch (err) { return; }
+                        if ('speechSynthesis' in window) {
+                            window.speechSynthesis.speak(new SpeechSynthesisUtterance(lastWord));
+                        }
+                        setTimeout(() => {
+                            const parent = highlightSpan.parentNode;
+                            if (parent) {
+                                while (highlightSpan.firstChild) parent.insertBefore(highlightSpan.firstChild, highlightSpan);
+                                parent.removeChild(highlightSpan);
+                                parent.normalize();
+                            }
+                        }, 600);
+                    }
+                }
+            });
+
+            // --- 4. Read text aloud, highlighting sentences ---
+            readAloudBtn.addEventListener('click', () => {
+                if (speechSynthesis.speaking && !speechSynthesis.paused) {
+                    speechSynthesis.pause();
+                    readAloudBtn.classList.remove('is-playing');
+                    readAloudBtn.title = "Resume reading";
+                    return;
+                }
+                if (speechSynthesis.paused) {
+                    speechSynthesis.resume();
+                    readAloudBtn.classList.add('is-playing');
+                    readAloudBtn.title = "Pause reading";
+                    return;
+                }
+                const textToRead = notepad.innerText;
+                if (textToRead.trim() === '') {
+                    alert("There is no text to read.");
+                    return;
+                }
+                removeHighlight();
+                lastHighlightedSentenceStartIndex = -1;
+                currentSpokenWord = '';
+                currentUtterance = new SpeechSynthesisUtterance(textToRead);
+                
+                currentUtterance.onstart = () => {
+                    readAloudBtn.classList.add('is-playing');
+                    readAloudBtn.title = "Pause reading";
+                };
+
+                currentUtterance.onboundary = (event) => {
+                    if (event.name !== 'word') return;
+                    const text = currentUtterance.text;
+                    currentSpokenWord = text.substring(event.charIndex, event.charIndex + event.charLength);
+                    const wordStartIndex = event.charIndex;
+                    const prevPunctuation = Math.max(text.lastIndexOf('.', wordStartIndex - 1), text.lastIndexOf('!', wordStartIndex - 1), text.lastIndexOf('?', wordStartIndex - 1));
+                    const sentenceStartIndex = (prevPunctuation === -1) ? 0 : prevPunctuation + 2;
+                    if (sentenceStartIndex === lastHighlightedSentenceStartIndex) return;
+                    lastHighlightedSentenceStartIndex = sentenceStartIndex;
+                    const nextPeriod = text.indexOf('.', sentenceStartIndex);
+                    const nextExclamation = text.indexOf('!', sentenceStartIndex);
+                    const nextQuestion = text.indexOf('?', sentenceStartIndex);
+                    let sentenceEndIndex = Math.min(nextPeriod > -1 ? nextPeriod : Infinity, nextExclamation > -1 ? nextExclamation : Infinity, nextQuestion > -1 ? nextQuestion : Infinity);
+                    if (sentenceEndIndex === Infinity) sentenceEndIndex = text.length - 1;
+                    const sentenceLength = (sentenceEndIndex + 1) - sentenceStartIndex;
+                    removeHighlight(); 
+                    highlightText(sentenceStartIndex, sentenceLength, 'highlight-sentence');
+                };
+
+                currentUtterance.onend = () => {
+                    removeHighlight();
+                    readAloudBtn.classList.remove('is-playing');
+                    readAloudBtn.title = "Read text aloud";
+                    currentUtterance = null;
+                    lastHighlightedSentenceStartIndex = -1;
+                    currentSpokenWord = '';
+                };
+                currentUtterance.onerror = (event) => {
+                    console.error('SpeechSynthesisUtterance.onerror', event);
+                    removeHighlight();
+                    readAloudBtn.classList.remove('is-playing');
+                    readAloudBtn.title = "Read text aloud";
+                    currentUtterance = null;
+                    lastHighlightedSentenceStartIndex = -1;
+                    currentSpokenWord = '';
+                };
+                speechSynthesis.cancel(); 
+                speechSynthesis.speak(currentUtterance);
+            });
+
+            // --- 5. Clear all text (Unchanged) ---
+            clearBtn.addEventListener('click', () => {
+                if (speechSynthesis.speaking) {
+                    speechSynthesis.cancel();
+                }
+                notepad.innerText = '';
+                localStorage.removeItem('savedNote');
+            });
+
+            // --- Helper Functions (Unchanged) ---
+            function removeHighlight() {
+                if (currentHighlightSpan) {
+                    const parent = currentHighlightSpan.parentNode;
+                    if (parent) {
+                        while (currentHighlightSpan.firstChild) parent.insertBefore(currentHighlightSpan.firstChild, currentHighlightSpan);
+                        parent.removeChild(currentHighlightSpan);
+                        parent.normalize();
+                    }
+                    currentHighlightSpan = null;
+                }
+            }
+            
+            function highlightText(startIndex, length, className) {
+                const range = document.createRange();
+                let charCount = 0;
+                let foundStart = false;
+                
+                function traverse(node) {
+                    if (node.nodeType === Node.TEXT_NODE) {
+                        const nextCharCount = charCount + node.textContent.length;
+                        if (!foundStart && startIndex >= charCount && startIndex < nextCharCount) {
+                            range.setStart(node, startIndex - charCount);
+                            foundStart = true;
+                        }
+                        if (foundStart && (startIndex + length) <= nextCharCount) {
+                            range.setEnd(node, (startIndex + length) - charCount);
+                            return true;
+                        }
+                        charCount = nextCharCount;
+                    } else {
+                        for (let i = 0; i < node.childNodes.length; i++) {
+                            if (traverse(node.childNodes[i])) return true;
+                        }
+                    }
+                    return false;
+                }
+
+                if (traverse(notepad)) {
+                    try {
+                        const span = document.createElement('span');
+                        span.className = className;
+                        range.surroundContents(span);
+                        currentHighlightSpan = span;
+                    } catch (err) {
+                        console.error("Could not highlight range:", err);
+                        removeHighlight();
+                    }
+                }
+            }
+        });
+    </script>
+
+</body>
+</html>
