@@ -232,14 +232,13 @@
         <div id="modal-content">
             <div id="modal-header">
                 <h2>Saved Notes</h2>
-                <button id="close-modal-btn">&times;</button>
+                <button id="close-modal-btn">×</button>
             </div>
             <div id="saved-notes-container"></div>
         </div>
     </div>
 
     <script>
-        // The JavaScript remains exactly the same as the previous version.
         window.addEventListener('DOMContentLoaded', (event) => {
             const notepad = document.getElementById('notepad');
             const readAloudBtn = document.getElementById('read-aloud-btn');
@@ -294,11 +293,10 @@
                     updateCounts();
                 }
                 if (target.classList.contains('delete-note-btn')) {
-                    if (confirm('Are you sure you want to delete this note?')) {
-                        notes.splice(noteIndex, 1);
-                        localStorage.setItem('myNotes', JSON.stringify(notes));
-                        renderSavedNotes();
-                    }
+                    // MODIFIED: Removed the confirm() dialog for immediate deletion.
+                    notes.splice(noteIndex, 1);
+                    localStorage.setItem('myNotes', JSON.stringify(notes));
+                    renderSavedNotes();
                 }
             });
 
