@@ -3,16 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dark Mode Notepad with Read Aloud</title>
+    <title>type speak</title>
 
     <style>
-        /* --- Base Layout --- */
+        /* --- Base Layout (Unchanged) --- */
         html, body {
             margin: 0;
             padding: 0;
             height: 100%;
             font-family: sans-serif;
-            background-color: #2b2b2b;
+            /* MODIFIED: Deep dark background */
+            background-color: #121212;
             display: flex;
             flex-direction: column;
         }
@@ -20,17 +21,17 @@
         /* --- Top Ribbon for Controls --- */
         #ribbon {
             flex-shrink: 0;
-            background-color: #2b2b2b;
+            /* MODIFIED: Deep dark background */
+            background-color: #121212;
             padding: 8px 20px;
-            border-bottom: 1px solid #4a4a4a;
+            /* MODIFIED: Subtle border color for the new theme */
+            border-bottom: 1px solid #2c2c2c;
             display: flex;
             align-items: center;
             gap: 8px;
-            /* MODIFIED: Pushes counters to the left and buttons to the right */
-            justify-content: space-between; 
+            justify-content: space-between;
         }
-
-        /* MODIFIED: Grouping containers for layout */
+        
         #counter-container, #button-container {
             display: flex;
             align-items: center;
@@ -39,9 +40,12 @@
         
         /* Shared button styles */
         #read-aloud-btn, #copy-btn, #clear-btn, #save-note-btn, #show-notes-btn {
-            background-color: #4f4f4f;
-            color: #e0e0e0;
-            border: 1px solid #666;
+            /* MODIFIED: New button color */
+            background-color: #333333;
+            /* MODIFIED: Brighter text for better contrast */
+            color: #f0f0f0;
+            /* MODIFIED: Subtle border */
+            border: 1px solid #4a4a4a;
             border-radius: 4px;
             padding: 6px 45px;
             min-width: 50px;
@@ -50,54 +54,59 @@
             align-items: center;
             justify-content: center;
             transition: background-color 0.2s, color 0.2s;
-            white-space: nowrap; /* Prevents text from wrapping */
+            white-space: nowrap;
         }
 
-        /* ADDED: Styles for the new counter displays */
+        /* Counter display styles */
         .counter-display {
-            background-color: #4f4f4f;
-            color: #e0e0e0;
-            border: 1px solid #666;
+            background-color: #333333;
+            color: #f0f0f0;
+            border: 1px solid #4a4a4a;
             border-radius: 4px;
             padding: 6px 45px;
             min-width: 50px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 14px; /* Slightly smaller font for counters */
-            cursor: default; /* Not clickable */
+            font-size: 14px;
+            cursor: default;
             white-space: nowrap;
         }
 
         #read-aloud-btn:hover, #copy-btn:hover, #save-note-btn:hover, #show-notes-btn:hover {
-            background-color: #5a5a5a;
+            /* MODIFIED: New hover color */
+            background-color: #444444;
         }
 
         #clear-btn:hover {
-            background-color: #7d3a3a;
+            /* MODIFIED: Deeper red for clear button hover */
+            background-color: #a13333;
         }
         
         /* Shared icon styles */
         #read-aloud-btn svg, #copy-btn svg, #clear-btn svg, #save-note-btn svg, #show-notes-btn svg {
             width: 16px;
             height: 16px;
-            fill: #e0e0e0;
+            /* MODIFIED: Brighter fill for icons */
+            fill: #f0f0f0;
         }
 
-        /* Logic to toggle play/pause icons */
+        /* Logic to toggle play/pause icons (Unchanged) */
         .icon-pause { display: none; }
         #read-aloud-btn.is-playing .icon-play { display: none; }
         #read-aloud-btn.is-playing .icon-pause { display: block; }
 
-        /* --- Notepad Area (Unchanged) --- */
+        /* --- Notepad Area --- */
         #notepad {
             flex-grow: 1;
             box-sizing: border-box;
             outline: none;
             overflow-y: auto; 
             padding: 25px;
-            background-color: #3a3a3a;
-            color: #e0e0e0;
+            /* MODIFIED: Slightly lighter charcoal for the editor pane */
+            background-color: #1e1e1e;
+            /* MODIFIED: Brighter text color */
+            color: #f0f0f0;
             font-family: 'Courier New', Courier, monospace;
             font-size: 16px;
             line-height: 1.6;
@@ -107,43 +116,95 @@
 
         #notepad:empty::before {
             content: "Start writing... Use the save button to keep your notes permanently.";
-            color: #757575;
+            /* MODIFIED: New placeholder color */
+            color: #666666;
             pointer-events: none;
         }
 
-        /* --- Highlighting Styles (Unchanged) --- */
+        /* --- Highlighting Styles --- */
         .highlight-word, .highlight-sentence {
             border-radius: 3px;
             transition: background-color 0.2s ease-in-out;
         }
-        .highlight-word { background-color: rgba(59, 130, 246, 0.5); }
-        .highlight-sentence { background-color: rgba(253, 224, 71, 0.4); box-shadow: 0 0 5px rgba(253, 224, 71, 0.3); }
+        /* MODIFIED: Deeper, less saturated blue highlight */
+        .highlight-word { background-color: rgba(30, 80, 180, 0.6); }
+        /* MODIFIED: Deeper amber/gold highlight */
+        .highlight-sentence { background-color: rgba(180, 130, 30, 0.5); box-shadow: 0 0 5px rgba(180, 130, 30, 0.4); }
         
-        /* --- Saved Notes Modal Styles (Unchanged) --- */
-        #modal-overlay { z-index: 1000; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.7); display: none; align-items: center; justify-content: center; }
-        #modal-content { background-color: #3a3a3a; padding: 25px; border-radius: 8px; border: 1px solid #4a4a4a; width: 90%; max-width: 600px; max-height: 80vh; display: flex; flex-direction: column; gap: 15px; }
-        #modal-header { display: flex; justify-content: space-between; align-items: center; color: #e0e0e0; border-bottom: 1px solid #4a4a4a; padding-bottom: 10px; }
+        /* --- Styles for Saved Notes Modal --- */
+        #modal-overlay { 
+            z-index: 1000; 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            /* MODIFIED: Darker overlay */
+            background-color: rgba(0, 0, 0, 0.8); 
+            display: none; 
+            align-items: center; 
+            justify-content: center; 
+        }
+        #modal-content { 
+            /* MODIFIED: Match notepad background */
+            background-color: #1e1e1e; 
+            padding: 25px; 
+            border-radius: 8px; 
+            /* MODIFIED: Match ribbon border */
+            border: 1px solid #2c2c2c; 
+            width: 90%; 
+            max-width: 600px; 
+            max-height: 80vh; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 15px; 
+        }
+        #modal-header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            /* MODIFIED: Match text color */
+            color: #f0f0f0; 
+            /* MODIFIED: Match ribbon border */
+            border-bottom: 1px solid #2c2c2c; 
+            padding-bottom: 10px; 
+        }
         #modal-header h2 { margin: 0; font-size: 1.2em; }
-        #close-modal-btn { background: none; border: none; color: #e0e0e0; font-size: 24px; cursor: pointer; line-height: 1; }
-        #saved-notes-container { overflow-y: auto; color: #e0e0e0; }
-        .note-item { background-color: #2b2b2b; padding: 15px; border-radius: 4px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+        #close-modal-btn { background: none; border: none; color: #f0f0f0; font-size: 24px; cursor: pointer; line-height: 1; }
+        #saved-notes-container { overflow-y: auto; color: #f0f0f0; }
+        .note-item { 
+            /* MODIFIED: Match main background */
+            background-color: #121212; 
+            padding: 15px; 
+            border-radius: 4px; 
+            margin-bottom: 10px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            gap: 10px; 
+        }
         .note-item p { margin: 0; flex-grow: 1; white-space: pre-wrap; word-break: break-all; }
         .note-item-actions { display: flex; gap: 8px; flex-shrink: 0; }
-        .note-item-actions button { background-color: #4f4f4f; color: #e0e0e0; border: 1px solid #666; border-radius: 4px; padding: 5px 10px; cursor: pointer; }
-        .note-item-actions button.delete-note-btn { background-color: #7d3a3a; }
+        .note-item-actions button { 
+            background-color: #333333; 
+            color: #f0f0f0; 
+            border: 1px solid #4a4a4a; 
+            border-radius: 4px; 
+            padding: 5px 10px; 
+            cursor: pointer; 
+        }
+        /* MODIFIED: Match clear button hover */
+        .note-item-actions button.delete-note-btn { background-color: #a13333; }
     </style>
 </head>
 <body>
 
     <!-- Ribbon for controls -->
     <div id="ribbon">
-        <!-- ADDED: Container for counters on the left -->
         <div id="counter-container">
             <div id="word-count-display" class="counter-display">0 Words</div>
             <div id="sentence-count-display" class="counter-display">0 Sentences</div>
         </div>
-
-        <!-- ADDED: Container for buttons on the right -->
         <div id="button-container">
             <button id="save-note-btn" title="Save current note">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>
@@ -171,13 +232,14 @@
         <div id="modal-content">
             <div id="modal-header">
                 <h2>Saved Notes</h2>
-                <button id="close-modal-btn">×</button>
+                <button id="close-modal-btn">&times;</button>
             </div>
             <div id="saved-notes-container"></div>
         </div>
     </div>
 
     <script>
+        // The JavaScript remains exactly the same as the previous version.
         window.addEventListener('DOMContentLoaded', (event) => {
             const notepad = document.getElementById('notepad');
             const readAloudBtn = document.getElementById('read-aloud-btn');
@@ -188,8 +250,6 @@
             const modalOverlay = document.getElementById('modal-overlay');
             const closeModalBtn = document.getElementById('close-modal-btn');
             const savedNotesContainer = document.getElementById('saved-notes-container');
-            
-            // --- ADDED: Get counter display elements ---
             const wordCountDisplay = document.getElementById('word-count-display');
             const sentenceCountDisplay = document.getElementById('sentence-count-display');
 
@@ -198,14 +258,10 @@
             let lastHighlightedSentenceStartIndex = -1;
             let currentSpokenWord = '';
 
-            // --- Initial call to set counters to 0 ---
             updateCounts();
 
-            // --- Handle input and update counters ---
             notepad.addEventListener('input', () => {
-                updateCounts(); // MODIFIED: Call counter function on input
-                
-                // Speech interruption logic (unchanged)
+                updateCounts();
                 if (speechSynthesis.speaking && currentUtterance) {
                     const wordToFinish = currentSpokenWord;
                     speechSynthesis.cancel();
@@ -219,29 +275,24 @@
                 }
             });
             
-            // --- Clear text and update counters ---
             clearBtn.addEventListener('click', () => {
                 if (speechSynthesis.speaking) {
                     speechSynthesis.cancel();
                 }
                 notepad.innerText = '';
-                updateCounts(); // MODIFIED: Call counter function on clear
+                updateCounts();
             });
             
-            // --- Load note and update counters ---
             savedNotesContainer.addEventListener('click', (e) => {
                 const notes = JSON.parse(localStorage.getItem('myNotes') || '[]');
                 const target = e.target.closest('button');
                 if (!target) return;
-
                 const noteIndex = parseInt(target.dataset.index, 10);
-
                 if (target.classList.contains('load-note-btn')) {
                     notepad.innerText = notes[noteIndex];
                     modalOverlay.style.display = 'none';
-                    updateCounts(); // MODIFIED: Call counter function on load
+                    updateCounts();
                 }
-
                 if (target.classList.contains('delete-note-btn')) {
                     if (confirm('Are you sure you want to delete this note?')) {
                         notes.splice(noteIndex, 1);
@@ -251,25 +302,17 @@
                 }
             });
 
-
-            // --- ADDED: New function to count words and sentences ---
             function updateCounts() {
                 const text = notepad.innerText.trim();
-
-                // Word Count
                 const words = text.split(/\s+/g).filter(word => word.length > 0);
                 const wordCount = text === '' ? 0 : words.length;
                 wordCountDisplay.textContent = `${wordCount} ${wordCount === 1 ? 'Word' : 'Words'}`;
-                
-                // Sentence Count
                 if (text === '') {
                     sentenceCountDisplay.textContent = '0 Sentences';
                     return;
                 }
-                // Match sentences ending in . ! ? optionally followed by spaces
                 const sentenceMatches = text.match(/[^.!?]+[.!?]+(\s*)?/g);
                 let sentenceCount = sentenceMatches ? sentenceMatches.length : 0;
-                // If there's remaining text without punctuation, it counts as one more sentence
                 const remainingText = sentenceMatches ? text.replace(sentenceMatches.join(''), '').trim() : text;
                 if (remainingText.length > 0) {
                     sentenceCount++;
@@ -277,9 +320,6 @@
                 sentenceCountDisplay.textContent = `${sentenceCount} ${sentenceCount === 1 ? 'Sentence' : 'Sentences'}`;
             }
 
-            // --- All other functions remain unchanged ---
-            
-            // Highlight last word on spacebar press (Unchanged)
             notepad.addEventListener('keyup', (e) => {
                 if (speechSynthesis.speaking && currentUtterance) return;
                 if (e.key === ' ' || e.key === 'Enter') {
@@ -313,7 +353,6 @@
                 }
             });
 
-            // Read text aloud, highlighting sentences (Unchanged)
             readAloudBtn.addEventListener('click', () => {
                 if (speechSynthesis.speaking && !speechSynthesis.paused) {
                     speechSynthesis.pause();
@@ -369,7 +408,6 @@
                 speechSynthesis.speak(currentUtterance);
             });
             
-            // Copy all text (Unchanged)
             copyBtn.addEventListener('click', () => {
                 const textToCopy = notepad.innerText;
                 if (textToCopy.trim() === '') {
@@ -388,7 +426,6 @@
                 });
             });
 
-            // Save Note Functionality (Unchanged)
             saveNoteBtn.addEventListener('click', () => {
                 const noteText = notepad.innerText.trim();
                 if (noteText === '') {
@@ -405,7 +442,6 @@
                 }, 1500);
             });
 
-            // Show Saved Notes Modal Functionality (Unchanged)
             showNotesBtn.addEventListener('click', () => {
                 renderSavedNotes();
                 modalOverlay.style.display = 'flex';
@@ -419,7 +455,6 @@
                 }
             });
             
-            // Helper Functions (Unchanged)
             function renderSavedNotes() {
                 const notes = JSON.parse(localStorage.getItem('myNotes') || '[]');
                 savedNotesContainer.innerHTML = '';
