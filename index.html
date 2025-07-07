@@ -26,24 +26,50 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            justify-content: flex-end;
+            /* MODIFIED: Pushes counters to the left and buttons to the right */
+            justify-content: space-between; 
+        }
+
+        /* MODIFIED: Grouping containers for layout */
+        #counter-container, #button-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
         
         /* Shared button styles */
-        #read-aloud-btn, #clear-btn {
+        #read-aloud-btn, #copy-btn, #clear-btn, #save-note-btn, #show-notes-btn {
             background-color: #4f4f4f;
             color: #e0e0e0;
             border: 1px solid #666;
             border-radius: 4px;
-            padding: 6px 53px; /* MODIFIED: Further increased horizontal padding */
+            padding: 6px 45px;
+            min-width: 50px;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: background-color 0.2s;
+            transition: background-color 0.2s, color 0.2s;
+            white-space: nowrap; /* Prevents text from wrapping */
         }
 
-        #read-aloud-btn:hover {
+        /* ADDED: Styles for the new counter displays */
+        .counter-display {
+            background-color: #4f4f4f;
+            color: #e0e0e0;
+            border: 1px solid #666;
+            border-radius: 4px;
+            padding: 6px 45px;
+            min-width: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px; /* Slightly smaller font for counters */
+            cursor: default; /* Not clickable */
+            white-space: nowrap;
+        }
+
+        #read-aloud-btn:hover, #copy-btn:hover, #save-note-btn:hover, #show-notes-btn:hover {
             background-color: #5a5a5a;
         }
 
@@ -52,7 +78,7 @@
         }
         
         /* Shared icon styles */
-        #read-aloud-btn svg, #clear-btn svg {
+        #read-aloud-btn svg, #copy-btn svg, #clear-btn svg, #save-note-btn svg, #show-notes-btn svg {
             width: 16px;
             height: 16px;
             fill: #e0e0e0;
@@ -63,7 +89,7 @@
         #read-aloud-btn.is-playing .icon-play { display: none; }
         #read-aloud-btn.is-playing .icon-pause { display: block; }
 
-        /* --- Notepad Area --- */
+        /* --- Notepad Area (Unchanged) --- */
         #notepad {
             flex-grow: 1;
             box-sizing: border-box;
@@ -80,71 +106,112 @@
         }
 
         #notepad:empty::before {
-            content: "Start writing your notes here... Your text is saved automatically.";
+            content: "Start writing... Use the save button to keep your notes permanently.";
             color: #757575;
             pointer-events: none;
         }
 
-        /* Style for the word being read aloud (on spacebar press) */
-        .highlight-word {
-            background-color: rgba(59, 130, 246, 0.5);
-            border-radius: 3px;
-            transition: background-color 0.1s ease-in-out;
-        }
-        
-        /* Style for the sentence being read aloud from the ribbon button */
-        .highlight-sentence {
-            background-color: rgba(253, 224, 71, 0.4);
+        /* --- Highlighting Styles (Unchanged) --- */
+        .highlight-word, .highlight-sentence {
             border-radius: 3px;
             transition: background-color 0.2s ease-in-out;
-            box-shadow: 0 0 5px rgba(253, 224, 71, 0.3);
         }
+        .highlight-word { background-color: rgba(59, 130, 246, 0.5); }
+        .highlight-sentence { background-color: rgba(253, 224, 71, 0.4); box-shadow: 0 0 5px rgba(253, 224, 71, 0.3); }
+        
+        /* --- Saved Notes Modal Styles (Unchanged) --- */
+        #modal-overlay { z-index: 1000; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.7); display: none; align-items: center; justify-content: center; }
+        #modal-content { background-color: #3a3a3a; padding: 25px; border-radius: 8px; border: 1px solid #4a4a4a; width: 90%; max-width: 600px; max-height: 80vh; display: flex; flex-direction: column; gap: 15px; }
+        #modal-header { display: flex; justify-content: space-between; align-items: center; color: #e0e0e0; border-bottom: 1px solid #4a4a4a; padding-bottom: 10px; }
+        #modal-header h2 { margin: 0; font-size: 1.2em; }
+        #close-modal-btn { background: none; border: none; color: #e0e0e0; font-size: 24px; cursor: pointer; line-height: 1; }
+        #saved-notes-container { overflow-y: auto; color: #e0e0e0; }
+        .note-item { background-color: #2b2b2b; padding: 15px; border-radius: 4px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+        .note-item p { margin: 0; flex-grow: 1; white-space: pre-wrap; word-break: break-all; }
+        .note-item-actions { display: flex; gap: 8px; flex-shrink: 0; }
+        .note-item-actions button { background-color: #4f4f4f; color: #e0e0e0; border: 1px solid #666; border-radius: 4px; padding: 5px 10px; cursor: pointer; }
+        .note-item-actions button.delete-note-btn { background-color: #7d3a3a; }
     </style>
 </head>
 <body>
 
     <!-- Ribbon for controls -->
     <div id="ribbon">
-        <button id="read-aloud-btn" title="Read text aloud">
-            <svg class="icon-play" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M8 5v14l11-7z"/></svg>
-            <svg class="icon-pause" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
-        </button>
-        <button id="clear-btn" title="Clear all text">
-             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-        </button>
+        <!-- ADDED: Container for counters on the left -->
+        <div id="counter-container">
+            <div id="word-count-display" class="counter-display">0 Words</div>
+            <div id="sentence-count-display" class="counter-display">0 Sentences</div>
+        </div>
+
+        <!-- ADDED: Container for buttons on the right -->
+        <div id="button-container">
+            <button id="save-note-btn" title="Save current note">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>
+            </button>
+            <button id="show-notes-btn" title="Show saved notes">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/></svg>
+            </button>
+            <button id="read-aloud-btn" title="Read text aloud">
+                <svg class="icon-play" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M8 5v14l11-7z"/></svg>
+                <svg class="icon-pause" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+            </button>
+            <button id="copy-btn" title="Copy all text">
+                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2zM8 21V7h11v14H8z"/></svg>
+            </button>
+            <button id="clear-btn" title="Clear all text">
+                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+            </button>
+        </div>
     </div>
 
     <div id="notepad" contenteditable="true" spellcheck="false"></div>
 
+    <!-- Modal for displaying saved notes -->
+    <div id="modal-overlay">
+        <div id="modal-content">
+            <div id="modal-header">
+                <h2>Saved Notes</h2>
+                <button id="close-modal-btn">×</button>
+            </div>
+            <div id="saved-notes-container"></div>
+        </div>
+    </div>
+
     <script>
-        // The JavaScript remains exactly the same.
         window.addEventListener('DOMContentLoaded', (event) => {
             const notepad = document.getElementById('notepad');
             const readAloudBtn = document.getElementById('read-aloud-btn');
             const clearBtn = document.getElementById('clear-btn');
+            const copyBtn = document.getElementById('copy-btn');
+            const saveNoteBtn = document.getElementById('save-note-btn');
+            const showNotesBtn = document.getElementById('show-notes-btn');
+            const modalOverlay = document.getElementById('modal-overlay');
+            const closeModalBtn = document.getElementById('close-modal-btn');
+            const savedNotesContainer = document.getElementById('saved-notes-container');
             
+            // --- ADDED: Get counter display elements ---
+            const wordCountDisplay = document.getElementById('word-count-display');
+            const sentenceCountDisplay = document.getElementById('sentence-count-display');
+
             let currentUtterance = null;
             let currentHighlightSpan = null;
             let lastHighlightedSentenceStartIndex = -1;
             let currentSpokenWord = '';
 
-            // --- 1. Load saved notes ---
-            const savedNote = localStorage.getItem('savedNote');
-            if (savedNote) {
-                notepad.innerText = savedNote;
-            }
+            // --- Initial call to set counters to 0 ---
+            updateCounts();
 
-            // --- 2. Save notes on input & handle speech interruption ---
+            // --- Handle input and update counters ---
             notepad.addEventListener('input', () => {
-                localStorage.setItem('savedNote', notepad.innerText);
-
+                updateCounts(); // MODIFIED: Call counter function on input
+                
+                // Speech interruption logic (unchanged)
                 if (speechSynthesis.speaking && currentUtterance) {
                     const wordToFinish = currentSpokenWord;
                     speechSynthesis.cancel();
                     removeHighlight();
                     readAloudBtn.classList.remove('is-playing');
                     currentUtterance = null;
-                    lastHighlightedSentenceStartIndex = -1;
                     if (wordToFinish && wordToFinish.trim()) {
                         const finishWordUtterance = new SpeechSynthesisUtterance(wordToFinish);
                         speechSynthesis.speak(finishWordUtterance);
@@ -152,7 +219,67 @@
                 }
             });
             
-            // --- 3. Highlight last word on spacebar press (Unchanged) ---
+            // --- Clear text and update counters ---
+            clearBtn.addEventListener('click', () => {
+                if (speechSynthesis.speaking) {
+                    speechSynthesis.cancel();
+                }
+                notepad.innerText = '';
+                updateCounts(); // MODIFIED: Call counter function on clear
+            });
+            
+            // --- Load note and update counters ---
+            savedNotesContainer.addEventListener('click', (e) => {
+                const notes = JSON.parse(localStorage.getItem('myNotes') || '[]');
+                const target = e.target.closest('button');
+                if (!target) return;
+
+                const noteIndex = parseInt(target.dataset.index, 10);
+
+                if (target.classList.contains('load-note-btn')) {
+                    notepad.innerText = notes[noteIndex];
+                    modalOverlay.style.display = 'none';
+                    updateCounts(); // MODIFIED: Call counter function on load
+                }
+
+                if (target.classList.contains('delete-note-btn')) {
+                    if (confirm('Are you sure you want to delete this note?')) {
+                        notes.splice(noteIndex, 1);
+                        localStorage.setItem('myNotes', JSON.stringify(notes));
+                        renderSavedNotes();
+                    }
+                }
+            });
+
+
+            // --- ADDED: New function to count words and sentences ---
+            function updateCounts() {
+                const text = notepad.innerText.trim();
+
+                // Word Count
+                const words = text.split(/\s+/g).filter(word => word.length > 0);
+                const wordCount = text === '' ? 0 : words.length;
+                wordCountDisplay.textContent = `${wordCount} ${wordCount === 1 ? 'Word' : 'Words'}`;
+                
+                // Sentence Count
+                if (text === '') {
+                    sentenceCountDisplay.textContent = '0 Sentences';
+                    return;
+                }
+                // Match sentences ending in . ! ? optionally followed by spaces
+                const sentenceMatches = text.match(/[^.!?]+[.!?]+(\s*)?/g);
+                let sentenceCount = sentenceMatches ? sentenceMatches.length : 0;
+                // If there's remaining text without punctuation, it counts as one more sentence
+                const remainingText = sentenceMatches ? text.replace(sentenceMatches.join(''), '').trim() : text;
+                if (remainingText.length > 0) {
+                    sentenceCount++;
+                }
+                sentenceCountDisplay.textContent = `${sentenceCount} ${sentenceCount === 1 ? 'Sentence' : 'Sentences'}`;
+            }
+
+            // --- All other functions remain unchanged ---
+            
+            // Highlight last word on spacebar press (Unchanged)
             notepad.addEventListener('keyup', (e) => {
                 if (speechSynthesis.speaking && currentUtterance) return;
                 if (e.key === ' ' || e.key === 'Enter') {
@@ -186,7 +313,7 @@
                 }
             });
 
-            // --- 4. Read text aloud, highlighting sentences ---
+            // Read text aloud, highlighting sentences (Unchanged)
             readAloudBtn.addEventListener('click', () => {
                 if (speechSynthesis.speaking && !speechSynthesis.paused) {
                     speechSynthesis.pause();
@@ -206,19 +333,11 @@
                     return;
                 }
                 removeHighlight();
-                lastHighlightedSentenceStartIndex = -1;
-                currentSpokenWord = '';
                 currentUtterance = new SpeechSynthesisUtterance(textToRead);
-                
-                currentUtterance.onstart = () => {
-                    readAloudBtn.classList.add('is-playing');
-                    readAloudBtn.title = "Pause reading";
-                };
-
+                currentUtterance.onstart = () => { readAloudBtn.classList.add('is-playing'); readAloudBtn.title = "Pause reading"; };
                 currentUtterance.onboundary = (event) => {
                     if (event.name !== 'word') return;
                     const text = currentUtterance.text;
-                    currentSpokenWord = text.substring(event.charIndex, event.charIndex + event.charLength);
                     const wordStartIndex = event.charIndex;
                     const prevPunctuation = Math.max(text.lastIndexOf('.', wordStartIndex - 1), text.lastIndexOf('!', wordStartIndex - 1), text.lastIndexOf('?', wordStartIndex - 1));
                     const sentenceStartIndex = (prevPunctuation === -1) ? 0 : prevPunctuation + 2;
@@ -233,14 +352,11 @@
                     removeHighlight(); 
                     highlightText(sentenceStartIndex, sentenceLength, 'highlight-sentence');
                 };
-
                 currentUtterance.onend = () => {
                     removeHighlight();
                     readAloudBtn.classList.remove('is-playing');
                     readAloudBtn.title = "Read text aloud";
                     currentUtterance = null;
-                    lastHighlightedSentenceStartIndex = -1;
-                    currentSpokenWord = '';
                 };
                 currentUtterance.onerror = (event) => {
                     console.error('SpeechSynthesisUtterance.onerror', event);
@@ -248,23 +364,91 @@
                     readAloudBtn.classList.remove('is-playing');
                     readAloudBtn.title = "Read text aloud";
                     currentUtterance = null;
-                    lastHighlightedSentenceStartIndex = -1;
-                    currentSpokenWord = '';
                 };
                 speechSynthesis.cancel(); 
                 speechSynthesis.speak(currentUtterance);
             });
-
-            // --- 5. Clear all text (Unchanged) ---
-            clearBtn.addEventListener('click', () => {
-                if (speechSynthesis.speaking) {
-                    speechSynthesis.cancel();
+            
+            // Copy all text (Unchanged)
+            copyBtn.addEventListener('click', () => {
+                const textToCopy = notepad.innerText;
+                if (textToCopy.trim() === '') {
+                    alert("There is nothing to copy.");
+                    return;
                 }
-                notepad.innerText = '';
-                localStorage.removeItem('savedNote');
+                navigator.clipboard.writeText(textToCopy).then(() => {
+                    const originalContent = copyBtn.innerHTML;
+                    copyBtn.textContent = 'Copied!';
+                    setTimeout(() => {
+                        copyBtn.innerHTML = originalContent;
+                    }, 1500);
+                }).catch(err => {
+                    console.error('Failed to copy text: ', err);
+                    alert('Could not copy text to clipboard.');
+                });
             });
 
-            // --- Helper Functions (Unchanged) ---
+            // Save Note Functionality (Unchanged)
+            saveNoteBtn.addEventListener('click', () => {
+                const noteText = notepad.innerText.trim();
+                if (noteText === '') {
+                    alert('Cannot save an empty note.');
+                    return;
+                }
+                const notes = JSON.parse(localStorage.getItem('myNotes') || '[]');
+                notes.unshift(noteText);
+                localStorage.setItem('myNotes', JSON.stringify(notes));
+                const originalContent = saveNoteBtn.innerHTML;
+                saveNoteBtn.innerHTML = `<span>Saved!</span>`;
+                setTimeout(() => {
+                    saveNoteBtn.innerHTML = originalContent;
+                }, 1500);
+            });
+
+            // Show Saved Notes Modal Functionality (Unchanged)
+            showNotesBtn.addEventListener('click', () => {
+                renderSavedNotes();
+                modalOverlay.style.display = 'flex';
+            });
+            closeModalBtn.addEventListener('click', () => {
+                modalOverlay.style.display = 'none';
+            });
+            modalOverlay.addEventListener('click', (e) => {
+                if (e.target === modalOverlay) {
+                    modalOverlay.style.display = 'none';
+                }
+            });
+            
+            // Helper Functions (Unchanged)
+            function renderSavedNotes() {
+                const notes = JSON.parse(localStorage.getItem('myNotes') || '[]');
+                savedNotesContainer.innerHTML = '';
+                if (notes.length === 0) {
+                    savedNotesContainer.innerHTML = '<p>No saved notes found.</p>';
+                    return;
+                }
+                notes.forEach((note, index) => {
+                    const noteItem = document.createElement('div');
+                    noteItem.className = 'note-item';
+                    const noteText = document.createElement('p');
+                    noteText.textContent = note.substring(0, 100) + (note.length > 100 ? '...' : '');
+                    const actionsDiv = document.createElement('div');
+                    actionsDiv.className = 'note-item-actions';
+                    const loadBtn = document.createElement('button');
+                    loadBtn.textContent = 'Load';
+                    loadBtn.className = 'load-note-btn';
+                    loadBtn.dataset.index = index;
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.textContent = 'Delete';
+                    deleteBtn.className = 'delete-note-btn';
+                    deleteBtn.dataset.index = index;
+                    actionsDiv.appendChild(loadBtn);
+                    actionsDiv.appendChild(deleteBtn);
+                    noteItem.appendChild(noteText);
+                    noteItem.appendChild(actionsDiv);
+                    savedNotesContainer.appendChild(noteItem);
+                });
+            }
             function removeHighlight() {
                 if (currentHighlightSpan) {
                     const parent = currentHighlightSpan.parentNode;
@@ -276,12 +460,10 @@
                     currentHighlightSpan = null;
                 }
             }
-            
             function highlightText(startIndex, length, className) {
                 const range = document.createRange();
                 let charCount = 0;
                 let foundStart = false;
-                
                 function traverse(node) {
                     if (node.nodeType === Node.TEXT_NODE) {
                         const nextCharCount = charCount + node.textContent.length;
@@ -301,17 +483,13 @@
                     }
                     return false;
                 }
-
                 if (traverse(notepad)) {
                     try {
                         const span = document.createElement('span');
                         span.className = className;
                         range.surroundContents(span);
                         currentHighlightSpan = span;
-                    } catch (err) {
-                        console.error("Could not highlight range:", err);
-                        removeHighlight();
-                    }
+                    } catch (err) { console.error("Could not highlight range:", err); removeHighlight(); }
                 }
             }
         });
